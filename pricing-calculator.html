@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .calculator-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .field-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input[type="number"]:disabled {
+            background: #f5f5f5;
+            color: #333;
+            cursor: not-allowed;
+        }
+
+        .percent-symbol {
+            position: absolute;
+            right: 15px;
+            color: #999;
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .dollar-symbol {
+            position: absolute;
+            left: 15px;
+            color: #999;
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        input.has-prefix {
+            padding-left: 35px;
+        }
+
+        .clear-button {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin-top: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .clear-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .clear-button:active {
+            transform: translateY(0);
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .flow-diagram {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .flow-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .flow-arrow {
+            color: #667eea;
+            font-size: 24px;
+            margin: 0 10px;
+        }
+
+        .flow-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 480px) {
+            .calculator-container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .flow-diagram {
+                flex-direction: column;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator-container">
+        <h1>Pricing Calculator</h1>
+        <p class="subtitle">Enter any 2 values to calculate the rest</p>
+
+        <div class="info-box">
+            💡 <strong>How it works:</strong> Input any two values and the calculator will automatically compute the remaining fields based on the pricing flow.
+        </div>
+
+        <div class="flow-diagram">
+            <div class="flow-item">
+                <div style="font-weight: 600; color: #667eea;">BOM Cost</div>
+                <div class="flow-label">Manufacturer</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-item">
+                <div style="font-weight: 600; color: #667eea;">Dealer Cost</div>
+                <div class="flow-label">+ Mfg Margin</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-item">
+                <div style="font-weight: 600; color: #667eea;">MSRP</div>
+                <div class="flow-label">+ Dealer Margin</div>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="bomCost">Manufacturer BOM Cost</label>
+            <div class="input-wrapper">
+                <span class="dollar-symbol">$</span>
+                <input type="number" id="bomCost" class="has-prefix" placeholder="0.00" step="0.01" min="0">
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="mfgMargin">Manufacturer Margin</label>
+            <div class="input-wrapper">
+                <input type="number" id="mfgMargin" placeholder="0.00" step="0.01" min="0">
+                <span class="percent-symbol">%</span>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="dealerCost">Dealer Cost</label>
+            <div class="input-wrapper">
+                <span class="dollar-symbol">$</span>
+                <input type="number" id="dealerCost" class="has-prefix" placeholder="0.00" step="0.01" min="0">
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="dealerMargin">Dealer Margin</label>
+            <div class="input-wrapper">
+                <input type="number" id="dealerMargin" placeholder="0.00" step="0.01" min="0">
+                <span class="percent-symbol">%</span>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="msrp">MSRP (Retail Price)</label>
+            <div class="input-wrapper">
+                <span class="dollar-symbol">$</span>
+                <input type="number" id="msrp" class="has-prefix" placeholder="0.00" step="0.01" min="0">
+            </div>
+        </div>
+
+        <button class="clear-button" onclick="clearAll()">Clear All</button>
+    </div>
+
+    <script>
+        // Get all input elements
+        const bomCostInput = document.getElementById('bomCost');
+        const mfgMarginInput = document.getElementById('mfgMargin');
+        const dealerCostInput = document.getElementById('dealerCost');
+        const dealerMarginInput = document.getElementById('dealerMargin');
+        const msrpInput = document.getElementById('msrp');
+
+        const inputs = [bomCostInput, mfgMarginInput, dealerCostInput, dealerMarginInput, msrpInput];
+
+        // Track which fields have user input
+        let userInputCount = 0;
+        let lastInputField = null;
+
+        // Add event listeners to all inputs
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                handleInputChange(this);
+            });
+        });
+
+        function handleInputChange(changedInput) {
+            // Count non-empty inputs
+            const filledInputs = inputs.filter(inp => inp.value !== '' && inp.value !== null);
+            userInputCount = filledInputs.length;
+            lastInputField = changedInput;
+
+            // If we have at least 2 values, calculate the rest
+            if (userInputCount >= 2) {
+                calculate();
+            }
+        }
+
+        function calculate() {
+            const bomCost = parseFloat(bomCostInput.value) || null;
+            const mfgMargin = parseFloat(mfgMarginInput.value) || null;
+            const dealerCost = parseFloat(dealerCostInput.value) || null;
+            const dealerMargin = parseFloat(dealerMarginInput.value) || null;
+            const msrp = parseFloat(msrpInput.value) || null;
+
+            // Pricing formulas:
+            // dealerCost = bomCost * (1 + mfgMargin/100)
+            // msrp = dealerCost * (1 + dealerMargin/100)
+
+            // Determine what we can calculate based on what we have
+
+            // Case 1: We have bomCost and mfgMargin -> calculate dealerCost
+            if (bomCost !== null && mfgMargin !== null && dealerCost === null) {
+                const calculatedDealerCost = bomCost * (1 + mfgMargin / 100);
+                dealerCostInput.value = calculatedDealerCost.toFixed(2);
+            }
+
+            // Case 2: We have bomCost and dealerCost -> calculate mfgMargin
+            if (bomCost !== null && dealerCost !== null && mfgMargin === null && bomCost !== 0) {
+                const calculatedMfgMargin = ((dealerCost / bomCost) - 1) * 100;
+                mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
+            }
+
+            // Case 3: We have dealerCost and mfgMargin -> calculate bomCost
+            if (dealerCost !== null && mfgMargin !== null && bomCost === null) {
+                const calculatedBomCost = dealerCost / (1 + mfgMargin / 100);
+                bomCostInput.value = calculatedBomCost.toFixed(2);
+            }
+
+            // Case 4: We have dealerCost and dealerMargin -> calculate msrp
+            if (dealerCost !== null && dealerMargin !== null && msrp === null) {
+                const calculatedMsrp = dealerCost * (1 + dealerMargin / 100);
+                msrpInput.value = calculatedMsrp.toFixed(2);
+            }
+
+            // Case 5: We have dealerCost and msrp -> calculate dealerMargin
+            if (dealerCost !== null && msrp !== null && dealerMargin === null && dealerCost !== 0) {
+                const calculatedDealerMargin = ((msrp / dealerCost) - 1) * 100;
+                dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
+            }
+
+            // Case 6: We have msrp and dealerMargin -> calculate dealerCost
+            if (msrp !== null && dealerMargin !== null && dealerCost === null) {
+                const calculatedDealerCost = msrp / (1 + dealerMargin / 100);
+                dealerCostInput.value = calculatedDealerCost.toFixed(2);
+            }
+
+            // Case 7: We have bomCost and msrp -> calculate intermediate values
+            if (bomCost !== null && msrp !== null && dealerCost === null) {
+                // We need at least one margin to solve this
+                if (mfgMargin !== null) {
+                    const calculatedDealerCost = bomCost * (1 + mfgMargin / 100);
+                    dealerCostInput.value = calculatedDealerCost.toFixed(2);
+                    if (calculatedDealerCost !== 0) {
+                        const calculatedDealerMargin = ((msrp / calculatedDealerCost) - 1) * 100;
+                        dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
+                    }
+                } else if (dealerMargin !== null) {
+                    const calculatedDealerCost = msrp / (1 + dealerMargin / 100);
+                    dealerCostInput.value = calculatedDealerCost.toFixed(2);
+                    if (bomCost !== 0) {
+                        const calculatedMfgMargin = ((calculatedDealerCost / bomCost) - 1) * 100;
+                        mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
+                    }
+                }
+            }
+
+            // Case 8: We have mfgMargin and dealerMargin -> need at least one cost value
+            // This is handled by the other cases
+
+            // Case 9: We have bomCost and dealerMargin
+            if (bomCost !== null && dealerMargin !== null && dealerCost === null && mfgMargin === null && msrp === null) {
+                // Can't calculate without more info - need either mfgMargin, dealerCost, or msrp
+                return;
+            }
+
+            // Case 10: We have mfgMargin and msrp
+            if (mfgMargin !== null && msrp !== null && bomCost === null && dealerCost === null && dealerMargin === null) {
+                // Can't calculate without more info - need either dealerMargin, dealerCost, or bomCost
+                return;
+            }
+
+            // Recursively calculate if we now have more values
+            const newFilledInputs = inputs.filter(inp => inp.value !== '' && inp.value !== null);
+            if (newFilledInputs.length > userInputCount && newFilledInputs.length < 5) {
+                userInputCount = newFilledInputs.length;
+                calculate();
+            }
+        }
+
+        function clearAll() {
+            inputs.forEach(input => {
+                input.value = '';
+            });
+            userInputCount = 0;
+            lastInputField = null;
+        }
+    </script>
+</body>
+</html>
