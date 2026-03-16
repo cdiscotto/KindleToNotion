@@ -1,0 +1,232 @@
+{
+  "name": "Telegram → Supabase (Tags + Vectors)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "1a2b3c4d-0001-0001-0001-000000000001",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "telegram-notes-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the message text and sender info from the Telegram update\nconst update = $input.first().json;\nconst message = update.message || update.edited_message;\n\nif (!message || !message.text) {\n  // Ignore non-text messages (photos, stickers, etc.)\n  return [];\n}\n\nreturn [{\n  json: {\n    content: message.text,\n    telegram_chat_id: message.chat.id,\n    telegram_message_id: message.message_id,\n    sender: message.from?.username || message.from?.first_name || 'unknown'\n  }\n}];"
+      },
+      "id": "1a2b3c4d-0002-0002-0002-000000000002",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "complete",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a tagging assistant. Given a message, extract 2-6 concise, lowercase, single-word or hyphenated tags that describe the topic, category, or key concepts. Return ONLY a valid JSON array of strings, nothing else.\n\nExamples:\n- \"Remember to buy milk and eggs\" → [\"shopping\", \"food\", \"reminder\"]\n- \"The meeting is at 3pm tomorrow\" → [\"meeting\", \"calendar\", \"work\"]\n- \"Loved this quote from Atomic Habits\" → [\"quote\", \"book\", \"productivity\", \"atomic-habits\"]"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.content }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 100
+        }
+      },
+      "id": "1a2b3c4d-0003-0003-0003-000000000003",
+      "name": "Extract Tags (OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [680, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the tags from OpenAI response and merge with message data\nconst messageData = $('Extract Message').first().json;\nconst tagsRaw = $input.first().json.message?.content || '[]';\n\nlet tags = [];\ntry {\n  // Strip markdown code fences if present\n  const cleaned = tagsRaw.replace(/```json\\n?|```/g, '').trim();\n  tags = JSON.parse(cleaned);\n  if (!Array.isArray(tags)) tags = [];\n} catch (e) {\n  // Fallback: extract words that look like tags\n  tags = tagsRaw.match(/[\\w-]+/g)?.slice(0, 6) || [];\n}\n\n// Sanitise: lowercase, no empty strings\ntags = tags.map(t => String(t).toLowerCase().trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    ...messageData,\n    tags\n  }\n}];"
+      },
+      "id": "1a2b3c4d-0004-0004-0004-000000000004",
+      "name": "Parse Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'text-embedding-ada-002', input: $json.content }) }}",
+        "options": {}
+      },
+      "id": "1a2b3c4d-0005-0005-0005-000000000005",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_OPENAI_HEADER_CREDENTIAL_ID",
+          "name": "OpenAI Bearer Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge embedding vector with the note data\nconst noteData = $('Parse Tags').first().json;\nconst embeddingResponse = $input.first().json;\n\nconst embedding = embeddingResponse.data?.[0]?.embedding;\nif (!embedding) {\n  throw new Error('OpenAI embedding API returned no data: ' + JSON.stringify(embeddingResponse));\n}\n\nreturn [{\n  json: {\n    content: noteData.content,\n    tags: noteData.tags,\n    embedding: embedding,         // float array, 1536 dims\n    source: 'telegram',\n    telegram_chat_id: noteData.telegram_chat_id,\n    telegram_message_id: noteData.telegram_message_id\n  }\n}];"
+      },
+      "id": "1a2b3c4d-0006-0006-0006-000000000006",
+      "name": "Merge Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $credentials.supabaseUrl }}/rest/v1/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $credentials.serviceKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.serviceKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ content: $json.content, tags: $json.tags, embedding: $json.embedding, source: $json.source, telegram_chat_id: $json.telegram_chat_id, telegram_message_id: $json.telegram_message_id }) }}",
+        "options": {}
+      },
+      "id": "1a2b3c4d-0007-0007-0007-000000000007",
+      "name": "Insert into Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1560, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Message').first().json.telegram_chat_id }}",
+        "text": "=✅ Saved! Tags: {{ $('Parse Tags').first().json.tags.map(t => '#' + t).join(' ') }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "1a2b3c4d-0008-0008-0008-000000000008",
+      "name": "Reply to User",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1780, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [{ "node": "Extract Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [{ "node": "Extract Tags (OpenAI)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Tags (OpenAI)": {
+      "main": [
+        [{ "node": "Parse Tags", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Tags": {
+      "main": [
+        [{ "node": "Generate Embedding", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [{ "node": "Merge Embedding", "type": "main", "index": 0 }]
+      ]
+    },
+    "Merge Embedding": {
+      "main": [
+        [{ "node": "Insert into Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Insert into Supabase": {
+      "main": [
+        [{ "node": "Reply to User", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}
